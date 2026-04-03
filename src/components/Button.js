@@ -1,0 +1,55 @@
+import React from 'react';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { theme } from '../theme/theme';
+
+export default function Button({ title, onPress, style, variant = 'primary' }) {
+  const getBackgroundColor = () => {
+    switch (variant) {
+      case 'primary': return theme.colors.primary;
+      case 'accent': return theme.colors.accent;
+      case 'outline': return 'transparent';
+      default: return theme.colors.primary;
+    }
+  };
+
+  const getTextColor = () => {
+    switch (variant) {
+      case 'outline': return theme.colors.primary;
+      default: return theme.colors.card;
+    }
+  };
+
+  return (
+    <TouchableOpacity 
+      style={[
+        styles.button, 
+        { backgroundColor: getBackgroundColor() },
+        variant === 'outline' && styles.outline,
+        style
+      ]} 
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <Text style={[styles.text, { color: getTextColor() }]}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    paddingVertical: theme.spacing.m,
+    paddingHorizontal: theme.spacing.l,
+    borderRadius: theme.borderRadius.l,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  outline: {
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  text: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
