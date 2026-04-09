@@ -13,7 +13,9 @@ export default function Card({ children, style }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.l,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     padding: theme.spacing.m,
     ...theme.shadows.soft,
     marginBottom: theme.spacing.m,

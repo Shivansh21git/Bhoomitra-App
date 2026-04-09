@@ -76,7 +76,7 @@ export default function Step5AdvisoryScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
           <Text style={styles.title}>AI Advisory</Text>
-          <Text style={styles.subtitle}>Personalized recommendations for {farmerDetails.farmName || farmerDetails.name}'s Farm</Text>
+          <Text style={styles.subtitle}>Personalized recommendations for {farmerDetails.farmName || farmerDetails.name}&apos;s Farm</Text>
         </View>
 
         <Card style={styles.statusCard}>

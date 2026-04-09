@@ -10,6 +10,7 @@ import Step3SamplingScreen from '../screens/testing/Step3SamplingScreen';
 import Step4SummaryScreen from '../screens/testing/Step4SummaryScreen';
 import Step5AdvisoryScreen from '../screens/testing/Step5AdvisoryScreen';
 import Step6ReportScreen from '../screens/testing/Step6ReportScreen';
+import DeviceDataScreen from '../screens/testing/DeviceDataScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,11 +20,14 @@ export default function TestingNavigator() {
       initialRouteName="TestingList"
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.colors.primary,
+          backgroundColor: theme.colors.lightGreen,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.softAccent,
         },
-        headerTintColor: theme.colors.card,
+        headerTintColor: theme.colors.primary,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: '700',
+          fontFamily: theme.typography.fontFamily,
         },
       }}
     >
@@ -38,6 +42,7 @@ export default function TestingNavigator() {
       <Stack.Screen name="Step4" component={Step4SummaryScreen} options={{ title: 'Step 4: Summary' }} />
       <Stack.Screen name="Step5" component={Step5AdvisoryScreen} options={{ title: 'Step 5: AI Advisory' }} />
       <Stack.Screen name="Step6" component={Step6ReportScreen} options={{ title: 'Step 6: Report' }} />
+      <Stack.Screen name="DeviceData" component={DeviceDataScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

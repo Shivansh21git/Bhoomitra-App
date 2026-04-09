@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
-import Button from '../../components/Button';
 import Card from '../../components/Card';
 import { useTestStore } from '../../store/useTestStore';
 

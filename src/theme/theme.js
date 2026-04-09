@@ -1,27 +1,33 @@
 export const theme = {
   colors: {
-    primary: '#1A3A8F', // Navy
-    accent: '#007B6E',  // Teal
-    success: '#28a745', // Green
-    warning: '#ffc107', // Orange
-    error: '#dc3545',   // Red
-    background: '#F5F7FA',
-    card: '#FFFFFF',
-    text: '#333333',
-    textLight: '#888888',
-    border: '#E0E0E0',
+    primary: '#2e7d32',
+    primaryDark: '#1b5e20',
+    lightGreen: '#e8f5e9',
+    softAccent: '#c8e6c9',
+    accent: '#2e7d32',
+    success: '#2e7d32',
+    warning: '#f59e0b',
+    error: '#dc2626',
+    background: '#f5f9f7',
+    card: '#ffffff',
+    text: '#1f2937',
+    textLight: '#6b7280',
+    border: '#dcedc8',
+    divider: '#eeeeee',
+    inputBorder: '#cccccc',
   },
   spacing: {
     xs: 4,
     s: 8,
+    sm: 12,
     m: 16,
     l: 24,
     xl: 32,
     xxl: 48,
   },
   borderRadius: {
-    s: 8,
-    m: 12,
+    s: 6,
+    m: 10,
     l: 16,
     xl: 24,
     round: 9999,
@@ -30,8 +36,8 @@ export const theme = {
     soft: {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
       elevation: 3,
     },
     medium: {
@@ -41,5 +47,12 @@ export const theme = {
       shadowRadius: 8,
       elevation: 5,
     }
-  }
+  },
+  typography: {
+    fontFamily: 'Segoe UI',
+    h1: { fontSize: 24, fontWeight: '700' },
+    h2: { fontSize: 19, fontWeight: '700' },
+    body: { fontSize: 15, fontWeight: '400' },
+    small: { fontSize: 12, fontWeight: '400' },
+  },
 };

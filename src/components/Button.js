@@ -6,7 +6,7 @@ export default function Button({ title, onPress, style, variant = 'primary' }) {
   const getBackgroundColor = () => {
     switch (variant) {
       case 'primary': return theme.colors.primary;
-      case 'accent': return theme.colors.accent;
+      case 'accent': return theme.colors.softAccent;
       case 'outline': return 'transparent';
       default: return theme.colors.primary;
     }
@@ -37,9 +37,9 @@ export default function Button({ title, onPress, style, variant = 'primary' }) {
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: theme.spacing.m,
-    paddingHorizontal: theme.spacing.l,
-    borderRadius: theme.borderRadius.l,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: theme.borderRadius.s,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
@@ -49,7 +49,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   text: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
+    fontFamily: theme.typography.fontFamily,
   },
 });

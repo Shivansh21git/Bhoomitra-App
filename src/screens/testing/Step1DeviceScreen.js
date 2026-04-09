@@ -1,82 +1,111 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { theme } from '../../theme/theme';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
-import { useTestStore } from '../../store/useTestStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const MOCK_DEVICES = [
-  { id: 'BLE-Bhoomitra-001', name: 'Bhoomitra Sensor 001', battery: 85 },
-  { id: 'BLE-Bhoomitra-002', name: 'Bhoomitra Sensor 002', battery: 62 },
+  { id: 'BLE-Bhoomitra-001', name: 'Bhoomitra Sensor 001', location: 'Pune Field 2', status: 'online' },
+  { id: 'BLE-Bhoomitra-002', name: 'Bhoomitra Sensor 002', location: 'Nashik Plot 5', status: 'offline' },
 ];
 
 export default function Step1DeviceScreen({ navigation }) {
-  const [isScanning, setIsScanning] = useState(true);
-  const [devices, setDevices] = useState([]);
-  const [selectedDevice, setSelectedDevice] = useState(null);
-  const { connectDevice, deviceConnected } = useTestStore();
+  const [devices, setDevices] = useState(MOCK_DEVICES);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: '', id: '', location: '' });
+  const logout = useAuthStore(state => state.logout);
+  const userName = 'Nitika';
 
-  useEffect(() => {
-    // Simulate BLE scanning
-    const scanTimer = setTimeout(() => {
-      setDevices(MOCK_DEVICES);
-      setIsScanning(false);
-    }, 2000);
+  const refreshDeviceList = () => setDevices(prev => [...prev]);
 
-    return () => clearTimeout(scanTimer);
-  }, []);
-
-  const handleConnect = () => {
-    if (selectedDevice) {
-      connectDevice(selectedDevice);
-      navigation.navigate('Step2');
+  const handleSubmitDevice = async () => {
+    if (!form.name.trim() || !form.id.trim()) {
+      Alert.alert('Validation', 'Device Name and Device ID are required.');
+      return;
     }
+    const payload = {
+      name: form.name.trim(),
+      id: form.id.trim(),
+      location: form.location.trim(),
+      status: 'online',
+    };
+    try {
+      await fetch('https://example.com/api/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (_error) {
+      // Keep optimistic local update if API is unavailable.
+    }
+    setDevices(prev => [payload, ...prev]);
+    refreshDeviceList();
+    setForm({ name: '', id: '', location: '' });
+    setShowForm(false);
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity onPress={() => setSelectedDevice(item)} activeOpacity={0.8}>
-      <Card style={[styles.deviceCard, selectedDevice?.id === item.id && styles.selectedCard]}>
-        <View style={styles.deviceInfo}>
-          <Ionicons name="bluetooth" size={24} color={selectedDevice?.id === item.id ? theme.colors.success : theme.colors.textLight} />
-          <View style={styles.deviceText}>
-            <Text style={styles.deviceName}>{item.name}</Text>
-            <Text style={styles.deviceId}>ID: {item.id}</Text>
-          </View>
+    <Card style={styles.deviceCard}>
+      <Text style={styles.deviceName}>{item.name}</Text>
+      <Text style={styles.deviceId}>Device ID: {item.id}</Text>
+      {item.location ? <Text style={styles.deviceLocation}>Location: {item.location}</Text> : null}
+      <View style={styles.deviceFooter}>
+        <View style={[styles.statusBadge, { backgroundColor: item.status === 'online' ? '#e8f5e9' : '#ffebee' }]}>
+          <Text style={[styles.statusText, { color: item.status === 'online' ? '#2e7d32' : '#dc2626' }]}>{item.status}</Text>
         </View>
-        <View style={styles.batteryInfo}>
-          <Ionicons name="battery-charged" size={20} color={item.battery > 20 ? theme.colors.success : theme.colors.error} />
-          <Text style={styles.batteryText}>{item.battery}%</Text>
-        </View>
-      </Card>
-    </TouchableOpacity>
+      </View>
+      <Button title="View Data" onPress={() => navigation.navigate('DeviceData', { deviceId: item.id })} />
+    </Card>
   );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Connect Soil Sensor</Text>
-      <Text style={styles.subtitle}>Turn on your device and ensure Bluetooth is enabled on your phone.</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.welcomeText}>Welcome, {userName}</Text>
+        <TouchableOpacity style={styles.inlineButton} onPress={() => setShowForm(prev => !prev)}>
+          <Text style={styles.inlineButtonText}>+ Add New Device</Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity onPress={logout}>
+        <Text style={styles.logoutText}>Logout</Text>
+      </TouchableOpacity>
 
-      {isScanning ? (
-        <View style={styles.scanningContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.scanningText}>Scanning for nearby devices...</Text>
-        </View>
-      ) : (
+      {showForm ? (
+        <Card style={styles.formCard}>
+          <Text style={styles.formTitle}>Add New Device</Text>
+          <TextInput
+            placeholder="Device Name"
+            placeholderTextColor={theme.colors.textLight}
+            value={form.name}
+            onChangeText={(value) => setForm(prev => ({ ...prev, name: value }))}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Device ID"
+            placeholderTextColor={theme.colors.textLight}
+            value={form.id}
+            onChangeText={(value) => setForm(prev => ({ ...prev, id: value }))}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Location"
+            placeholderTextColor={theme.colors.textLight}
+            value={form.location}
+            onChangeText={(value) => setForm(prev => ({ ...prev, location: value }))}
+            style={styles.input}
+          />
+          <Button title="Submit Device" onPress={handleSubmitDevice} />
+        </Card>
+      ) : null}
+
+      <View style={styles.listWrap}>
         <FlatList
           data={devices}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.emptyText}>No devices found. Try resetting your sensor.</Text>}
-        />
-      )}
-
-      <View style={styles.footer}>
-        <Button 
-          title={isScanning ? "Scanning..." : "Connect & Continue"} 
-          onPress={handleConnect}
-          style={{ opacity: selectedDevice ? 1 : 0.5 }}
+          ListEmptyComponent={<Text style={styles.emptyText}>No devices found.</Text>}
         />
       </View>
     </View>
@@ -87,74 +116,96 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    padding: theme.spacing.m,
+    paddingHorizontal: theme.spacing.m,
+    paddingTop: theme.spacing.m,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.l,
-  },
-  scanningContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scanningText: {
-    marginTop: theme.spacing.m,
-    color: theme.colors.textLight,
-    fontSize: 16,
-  },
-  list: {
-    paddingBottom: theme.spacing.xxl,
-  },
-  deviceCard: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    marginBottom: theme.spacing.s,
   },
-  selectedCard: {
-    borderColor: theme.colors.success,
-    backgroundColor: '#f0fdf4', // light success background
+  welcomeText: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: theme.colors.text,
+    fontFamily: theme.typography.fontFamily,
   },
-  deviceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  logoutText: {
+    alignSelf: 'flex-end',
+    color: theme.colors.primary,
+    fontSize: 14,
+    marginBottom: theme.spacing.s,
+    fontFamily: theme.typography.fontFamily,
   },
-  deviceText: {
-    marginLeft: theme.spacing.m,
+  inlineButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  inlineButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: theme.typography.fontFamily,
+  },
+  formCard: { marginBottom: theme.spacing.m },
+  formTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.text, marginBottom: theme.spacing.s, fontFamily: theme.typography.fontFamily },
+  input: {
+    borderWidth: 1,
+    borderColor: theme.colors.inputBorder,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: theme.spacing.s,
+    color: theme.colors.text,
+    fontFamily: theme.typography.fontFamily,
+    backgroundColor: '#fff',
+  },
+  listWrap: { flex: 1 },
+  list: {
+    paddingBottom: theme.spacing.l,
+  },
+  deviceCard: {
+    borderRadius: 12,
+    padding: theme.spacing.m,
   },
   deviceName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: theme.colors.text,
+    fontFamily: theme.typography.fontFamily,
   },
   deviceId: {
     fontSize: 12,
     color: theme.colors.textLight,
+    marginTop: 4,
+    fontFamily: theme.typography.fontFamily,
   },
-  batteryInfo: {
-    alignItems: 'center',
-  },
-  batteryText: {
+  deviceLocation: {
     fontSize: 12,
     color: theme.colors.textLight,
     marginTop: 2,
+    marginBottom: theme.spacing.s,
+    fontFamily: theme.typography.fontFamily,
   },
-  footer: {
-    marginTop: 'auto',
-    paddingTop: theme.spacing.m,
+  deviceFooter: { marginBottom: theme.spacing.s },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: theme.typography.fontFamily,
   },
   emptyText: {
     textAlign: 'center',
     color: theme.colors.textLight,
-    marginTop: theme.spacing.xl,
+    marginTop: theme.spacing.l,
+    fontFamily: theme.typography.fontFamily,
   }
 });

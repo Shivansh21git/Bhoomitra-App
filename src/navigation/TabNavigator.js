@@ -31,12 +31,19 @@ export default function TabNavigator() {
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textLight,
-        headerStyle: {
-          backgroundColor: theme.colors.primary,
+        tabBarStyle: {
+          backgroundColor: theme.colors.lightGreen,
+          borderTopColor: theme.colors.softAccent,
         },
-        headerTintColor: theme.colors.card,
+        headerStyle: {
+          backgroundColor: theme.colors.lightGreen,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.softAccent,
+        },
+        headerTintColor: theme.colors.primary,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: '700',
+          fontFamily: theme.typography.fontFamily,
         },
       })}
     >
