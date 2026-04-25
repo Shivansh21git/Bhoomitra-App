@@ -1,21 +1,38 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { theme } from '../theme/theme';
-import Card from '../components/Card';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { apiService } from '../api/apiService';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import { useAuthStore } from '../store/useAuthStore';
+import { theme } from '../theme/theme';
 
 export default function HomeScreen({ navigation }) {
   const logout = useAuthStore(state => state.logout);
-  const userName = 'Nitika';
-  const device = { name: 'Bhoomitra Sensor 001', id: 'BLE-Bhoomitra-001', location: 'Pune Field 2', status: 'online' };
-  const sensors = useMemo(() => ([
-    { key: 'Nitrogen', value: '135.6', state: 'Optimal', color: '#2e7d32' },
-    { key: 'Phosphorus', value: '24.8', state: 'Low', color: '#dc2626' },
-    { key: 'Potassium', value: '88.2', state: 'High', color: '#f59e0b' },
-    { key: 'Temperature', value: '29.4 C', state: 'Optimal', color: '#2e7d32' },
-    { key: 'Humidity', value: '61.0%', state: 'Optimal', color: '#2e7d32' },
-  ]), []);
+  const userToken = useAuthStore(state => state.userToken);
+  const userInfo = useAuthStore(state => state.userInfo);
+  const userName = userInfo?.username || userInfo?.name || 'Nitika';
+
+  const [homeData, setHomeData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await apiService.getHomeData(userToken);
+        setHomeData(data);
+      } catch (err) {
+        setError(err.message || 'Failed to fetch dashboard data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (userToken) {
+      fetchData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [userToken]);
 
   return (
     <View style={styles.screen}>
@@ -29,47 +46,72 @@ export default function HomeScreen({ navigation }) {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Text style={styles.greeting}>Welcome, {userName}</Text>
 
-        <View style={styles.cardRow}>
-          <Card style={styles.halfCard}>
-            <Text style={styles.cardTitle}>Soil Health Score</Text>
-            <Text style={styles.scoreNumber}>40</Text>
-            <Text style={styles.poorLabel}>Poor Condition</Text>
-            <Text style={styles.updatedText}>Last updated: just now</Text>
-            <Button title="Start Soil Test" onPress={() => navigation.navigate('TestingTab')} />
-          </Card>
+        {isLoading && <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: theme.spacing.xl }} />}
 
-          <Card style={styles.halfCard}>
-            <Text style={styles.cardTitle}>Active Device</Text>
-            <View style={styles.dropdown}>
-              <Text style={styles.dropdownText}>{device.name}</Text>
-            </View>
-            <Text style={styles.deviceMeta}>Name: {device.name}</Text>
-            <Text style={styles.deviceMeta}>Device ID: {device.id}</Text>
-            <Text style={styles.deviceMeta}>Location: {device.location}</Text>
-            <View style={styles.statusRow}>
-              <Text style={styles.deviceMeta}>Status:</Text>
-              <View style={[styles.badge, { backgroundColor: device.status === 'online' ? '#e8f5e9' : '#ffebee' }]}>
-                <Text style={[styles.badgeText, { color: device.status === 'online' ? '#2e7d32' : '#dc2626' }]}>
-                  {device.status}
-                </Text>
-              </View>
-            </View>
-            <Button title="View Previous Data ->" variant="outline" onPress={() => navigation.navigate('DeviceData', { deviceId: device.id })} style={styles.topButton} />
-            <Button title="+ Add New Device" onPress={() => navigation.navigate('Step1')} />
+        {error && (
+          <Card style={{ backgroundColor: '#fee2e2' }}>
+            <Text style={{ color: '#dc2626', textAlign: 'center' }}>{error}</Text>
           </Card>
-        </View>
+        )}
 
-        <Card style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            {sensors.map(sensor => (
-              <View key={sensor.key} style={styles.sensorCol}>
-                <Text style={styles.sensorName}>{sensor.key}</Text>
-                <Text style={styles.sensorValue}>{sensor.value}</Text>
-                <Text style={[styles.sensorState, { color: sensor.color }]}>{sensor.state}</Text>
-              </View>
-            ))}
-          </View>
-        </Card>
+        {!isLoading && !error && homeData && (
+          <>
+            <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10 }}>Total Devices: {homeData.total_devices || homeData.devices?.length || 0}</Text>
+
+            {(homeData.devices || []).map((device, index) => {
+              const sensors = device.latest_data ? Object.entries(device.latest_data).map(([k, v]) => ({ key: k, value: String(v) })) : [];
+              return (
+                <View key={device.id || index} style={{ marginBottom: theme.spacing.xl }}>
+                  <View style={styles.cardRow}>
+                    <Card style={styles.halfCard}>
+                      <Text style={styles.cardTitle}>Device Details</Text>
+                      <View style={styles.dropdown}>
+                        <Text style={styles.dropdownText}>{device.name}</Text>
+                      </View>
+                      <Text style={styles.deviceMeta}>Location: {device.location}</Text>
+                      <Text style={styles.deviceMeta}>Last Updated: {device.last_updated}</Text>
+                      <View style={styles.statusRow}>
+                        <Text style={styles.deviceMeta}>Status:</Text>
+                        <View style={[styles.badge, { backgroundColor: '#e8f5e9' }]}>
+                          <Text style={[styles.badgeText, { color: '#2e7d32' }]}>
+                            online
+                          </Text>
+                        </View>
+                      </View>
+                    </Card>
+
+                    <Card style={styles.halfCard}>
+                      <Text style={styles.cardTitle}>Soil Health</Text>
+                      <Text style={styles.scoreNumber}>{device.health_score || '-'}</Text>
+                      <Text style={styles.poorLabel}>{device.health_label || '-'}</Text>
+                      <Button title="Start Soil Test" onPress={() => navigation.navigate('TestingTab')} />
+                    </Card>
+                  </View>
+
+                  <Card style={styles.summaryCard}>
+                    <View style={styles.summaryRow}>
+                      {sensors.length > 0 ? sensors.map(sensor => (
+                        <View key={sensor.key} style={styles.sensorCol}>
+                          <Text style={styles.sensorName}>{sensor.key}</Text>
+                          <Text style={styles.sensorValue}>{sensor.value}</Text>
+                        </View>
+                      )) : (
+                        <Text style={styles.deviceMeta}>No sensor data available.</Text>
+                      )}
+                    </View>
+                  </Card>
+                </View>
+              );
+            })}
+
+            {(!homeData.devices || homeData.devices.length === 0) && (
+              <Card>
+                <Text style={{ textAlign: 'center', marginBottom: theme.spacing.m }}>No devices found.</Text>
+                <Button title="+ Add New Device" onPress={() => navigation.navigate('Step1')} />
+              </Card>
+            )}
+          </>
+        )}
 
         <Card style={styles.recommendCard}>
           <View style={styles.recommendAccent} />

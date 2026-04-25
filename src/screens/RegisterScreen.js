@@ -1,43 +1,38 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { apiService } from '../api/apiService';
-import Button from '../components/Button';
-import { useAuthStore } from '../store/useAuthStore';
 import { theme } from '../theme/theme';
+import Button from '../components/Button';
+import { apiService } from '../api/apiService';
 
-export default function LoginScreen({ navigation }) {
+export default function RegisterScreen({ navigation }) {
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const login = useAuthStore(state => state.login);
 
-  const handleLogin = async () => {
-    if (username.length > 0 && password.length > 0) {
-      setIsLoading(true);
-      try {
-        const response = await apiService.login(username, password);
-        // Assuming response returns { access_token, refresh_token, user: {...} }
-        login(response.access, response.refresh, response.user);
-      } catch (error) {
-        Alert.alert('Login Failed', error.message || 'Invalid username or password');
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      Alert.alert('Validation', 'Please enter Username and Password');
+  const handleRegister = async () => {
+    if (!username || !email || !password || !confirmPassword) {
+      Alert.alert('Validation', 'Please fill all fields.');
+      return;
     }
-  };
 
-  const handleGoogleSignIn = async () => {
-    const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'demo-google-client-id';
-    const redirectUri = 'https://auth.expo.io/@bhoomitra/app';
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=openid%20email%20profile`;
+    if (password !== confirmPassword) {
+      Alert.alert('Validation', 'Password and Confirm Password must match.');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-    } catch (_error) {
-      Alert.alert('Google Sign-In', 'Unable to launch Google OAuth flow.');
+      await apiService.register(username, email, password, confirmPassword);
+      Alert.alert('Success', 'Registration successful!', [
+        { text: 'OK', onPress: () => navigation.navigate('Login') }
+      ]);
+    } catch (error) {
+      Alert.alert('Registration Failed', error.message || 'Something went wrong');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -59,8 +54,8 @@ export default function LoginScreen({ navigation }) {
       </View>
 
       <View style={styles.welcomeContainer}>
-        <Text style={styles.welcomeTitle}>Welcome back</Text>
-        <Text style={styles.welcomeSubtitle}>Sign in to continue</Text>
+        <Text style={styles.welcomeTitle}>Create account</Text>
+        <Text style={styles.welcomeSubtitle}>Register to get started</Text>
       </View>
 
       <View style={styles.formContainer}>
@@ -72,6 +67,18 @@ export default function LoginScreen({ navigation }) {
             placeholderTextColor={theme.colors.textLight}
             value={username}
             onChangeText={setUsername}
+          />
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <Ionicons name="mail-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={theme.colors.textLight}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
             autoCapitalize="none"
           />
         </View>
@@ -88,29 +95,34 @@ export default function LoginScreen({ navigation }) {
           />
         </View>
 
+        <View style={styles.inputWrapper}>
+          <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            placeholderTextColor={theme.colors.textLight}
+            secureTextEntry
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+        </View>
+
         {isLoading ? (
           <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: theme.spacing.m }} />
         ) : (
           <Button
-            title="Sign In"
-            onPress={handleLogin}
-            style={styles.loginBtn}
+            title="Register"
+            onPress={handleRegister}
+            style={styles.registerBtn}
           />
         )}
 
         <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Don&apos;t have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.registerLink}>Register</Text>
+          <Text style={styles.registerText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.registerLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn} activeOpacity={0.85}>
-          <View style={styles.googleIconWrap}>
-            <Text style={styles.googleIcon}>G</Text>
-          </View>
-          <Text style={styles.googleText}>Sign in with Google</Text>
-        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -191,7 +203,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontFamily: theme.typography.fontFamily,
   },
-  loginBtn: {
+  registerBtn: {
     marginTop: theme.spacing.m,
     borderRadius: theme.borderRadius.m,
   },
@@ -209,39 +221,6 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: theme.typography.fontFamily,
-  },
-  googleBtn: {
-    marginTop: theme.spacing.m,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 6,
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  googleIconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: theme.colors.lightGreen,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  googleIcon: {
-    color: theme.colors.primaryDark,
-    fontWeight: '700',
-    fontFamily: theme.typography.fontFamily,
-  },
-  googleText: {
-    fontSize: 15,
-    color: theme.colors.text,
-    fontWeight: '600',
     fontFamily: theme.typography.fontFamily,
   },
 });

@@ -7,9 +7,21 @@ export const useAuthStore = create(
     (set) => ({
       isAuthenticated: false,
       userToken: null,
+      refreshToken: null,
+      userInfo: null,
 
-      login: (token) => set({ isAuthenticated: true, userToken: token }),
-      logout: () => set({ isAuthenticated: false, userToken: null }),
+      login: (token, refresh, info) => set({ 
+        isAuthenticated: true, 
+        userToken: token,
+        refreshToken: refresh,
+        userInfo: info
+      }),
+      logout: () => set({ 
+        isAuthenticated: false, 
+        userToken: null,
+        refreshToken: null,
+        userInfo: null
+      }),
     }),
     {
       name: 'bhoomitra-auth-storage',
