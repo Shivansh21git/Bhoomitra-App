@@ -92,5 +92,40 @@ export const apiService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  async addDevice(token, devicePayload) {
+    try {
+      const response = await fetch(`${BASE_URL}/devices/add/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          device_id: devicePayload?.device_id || '',
+          name: devicePayload?.name || '',
+          location: devicePayload?.location || '',
+          device_type: devicePayload?.device_type || '',
+        }),
+      });
+
+      const text = await response.text();
+      let data;
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error('Invalid JSON response from add device API');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || data.detail || 'Failed to add device');
+      }
+
+      return data;
+    } catch (error) {
+      throw error;
+    }
   }
 };

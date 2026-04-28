@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { useFocusEffect } from '@react-navigation/native';
 import { apiService } from '../api/apiService';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -13,26 +15,68 @@ export default function HomeScreen({ navigation }) {
   const userName = userInfo?.username || userInfo?.name || 'Nitika';
 
   const [homeData, setHomeData] = useState(null);
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await apiService.getHomeData(userToken);
-        setHomeData(data);
-      } catch (err) {
-        setError(err.message || 'Failed to fetch dashboard data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    if (userToken) {
-      fetchData();
-    } else {
+  const fetchHomeData = useCallback(async (showLoader = false) => {
+    if (!userToken) {
+      setHomeData(null);
+      setIsLoading(false);
+      return;
+    }
+
+    if (showLoader) {
+      setIsLoading(true);
+    }
+    setError(null);
+
+    try {
+      const data = await apiService.getHomeData(userToken);
+      setHomeData(data);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch dashboard data');
+    } finally {
       setIsLoading(false);
     }
   }, [userToken]);
+
+  useEffect(() => {
+    fetchHomeData(true);
+  }, [fetchHomeData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHomeData(false);
+    }, [fetchHomeData])
+  );
+
+  useEffect(() => {
+    const devices = homeData?.devices || [];
+    if (devices.length === 0) {
+      setSelectedDeviceId('');
+      return;
+    }
+
+    setSelectedDeviceId(currentId => {
+      const hasCurrent = devices.some(device => String(device.device_id ?? '') === currentId);
+      if (hasCurrent) {
+        return currentId;
+      }
+      return String(devices[0].device_id ?? '');
+    });
+  }, [homeData]);
+
+  const devices = homeData?.devices || [];
+  const selectedDevice = devices.find(device => String(device.device_id ?? '') === selectedDeviceId) || devices[0];
+  const basicFields = ['nitrogen', 'phosphorus', 'potassium', 'temperature', 'humidity'];
+  const advancedFields = ['nitrogen', 'phosphorus', 'potassium', 'ec', 'ph', 'soil_moisture', 'temperature', 'humidity'];
+  const allowedFields = selectedDevice?.device_type === 'advanced' ? advancedFields : basicFields;
+  const sensors = selectedDevice?.latest_data
+    ? allowedFields
+      .filter(k => selectedDevice.latest_data[k] !== undefined)
+      .map(k => ({ key: k, value: String(selectedDevice.latest_data[k]) }))
+    : [];
 
   return (
     <View style={styles.screen}>
@@ -58,26 +102,35 @@ export default function HomeScreen({ navigation }) {
           <>
             <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10 }}>Total Devices: {homeData.summary?.total_devices || 0} | Active: {homeData.summary?.active_devices || 0}</Text>
 
-            {(homeData.devices || []).map((device, index) => {
-              const basicFields = ['nitrogen', 'phosphorus', 'potassium', 'temperature', 'humidity'];
-              const advancedFields = ['nitrogen', 'phosphorus', 'potassium', 'ec', 'ph', 'soil_moisture', 'temperature', 'humidity'];
+            {devices.length > 0 && (
+              <View style={styles.dropdown}>
+                <Picker
+                  selectedValue={selectedDeviceId}
+                  onValueChange={value => setSelectedDeviceId(String(value))}
+                  style={styles.picker}
+                  dropdownIconColor={theme.colors.text}
+                >
+                  {devices.map((device, index) => (
+                    <Picker.Item
+                      key={String(device.device_id ?? index)}
+                      label={device.name || `Device ${index + 1}`}
+                      value={String(device.device_id ?? '')}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            )}
 
-              const allowedFields = device.device_type === 'advanced' ? advancedFields : basicFields;
-
-              const sensors = device.latest_data ? allowedFields
-                .filter(k => device.latest_data[k] !== undefined)
-                .map(k => ({ key: k, value: String(device.latest_data[k]) })) : [];
-
-              return (
-                <View key={device.device_id || index} style={{ marginBottom: theme.spacing.xl }}>
+            {selectedDevice && (
+              <View key={selectedDevice.device_id || selectedDeviceId} style={{ marginBottom: theme.spacing.xl }}>
                   <View style={styles.cardRow}>
                     <Card style={styles.halfCard}>
                       <Text style={styles.cardTitle}>Device Details</Text>
-                      <View style={styles.dropdown}>
-                        <Text style={styles.dropdownText}>{device.name}</Text>
+                      <View style={styles.dropdownPreview}>
+                        <Text style={styles.dropdownText}>{selectedDevice.name}</Text>
                       </View>
-                      <Text style={styles.deviceMeta}>Location: {device.location}</Text>
-                      <Text style={styles.deviceMeta}>Last Updated: {device.last_updated}</Text>
+                      <Text style={styles.deviceMeta}>Location: {selectedDevice.location}</Text>
+                      <Text style={styles.deviceMeta}>Last Updated: {selectedDevice.last_updated}</Text>
                       <View style={styles.statusRow}>
                         <Text style={styles.deviceMeta}>Status:</Text>
                         <View style={[styles.badge, { backgroundColor: '#e8f5e9' }]}>
@@ -90,8 +143,8 @@ export default function HomeScreen({ navigation }) {
 
                     <Card style={styles.halfCard}>
                       <Text style={styles.cardTitle}>Soil Health</Text>
-                      <Text style={styles.scoreNumber}>{device.health_score ?? '-'}</Text>
-                      <Text style={styles.poorLabel}>{device.health_label || '-'}</Text>
+                      <Text style={styles.scoreNumber}>{selectedDevice.health_score ?? '-'}</Text>
+                      <Text style={styles.poorLabel}>{selectedDevice.health_label || '-'}</Text>
                       <Button title="Start Soil Test" onPress={() => navigation.navigate('TestingTab')} />
                     </Card>
                   </View>
@@ -113,8 +166,7 @@ export default function HomeScreen({ navigation }) {
                     </View>
                   </Card>
                 </View>
-              );
-            })}
+            )}
 
             {(!homeData.devices || homeData.devices.length === 0) && (
               <Card>
@@ -217,6 +269,18 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily,
   },
   dropdown: {
+    borderWidth: 1,
+    borderColor: theme.colors.inputBorder,
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: theme.spacing.s,
+  },
+  picker: {
+    marginHorizontal: -8,
+    color: theme.colors.text,
+  },
+  dropdownPreview: {
     borderWidth: 1,
     borderColor: theme.colors.inputBorder,
     borderRadius: 6,
