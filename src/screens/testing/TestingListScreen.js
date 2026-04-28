@@ -1,9 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../theme/theme';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Card from '../../components/Card';
 import { useTestStore } from '../../store/useTestStore';
+import { theme } from '../../theme/theme';
 
 const mockTests = [
   { id: '1', farmer: 'Ramesh Singh', location: 'Pune HQ', score: 'Excellent', date: '21 Mar 2026' },
@@ -16,7 +15,7 @@ export default function TestingListScreen({ navigation }) {
 
   const startNewTest = () => {
     resetTestSession();
-    navigation.navigate('Step1');
+    navigation.navigate('TestingTab');
   };
 
   const getScoreColor = (score) => {

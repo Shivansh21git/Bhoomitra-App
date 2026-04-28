@@ -44,7 +44,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.greeting}>Welcome, {userName}</Text>
+        <Text style={styles.greeting}>Welcome, {homeData?.user?.username || userName}</Text>
 
         {isLoading && <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: theme.spacing.xl }} />}
 
@@ -56,12 +56,20 @@ export default function HomeScreen({ navigation }) {
 
         {!isLoading && !error && homeData && (
           <>
-            <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10 }}>Total Devices: {homeData.total_devices || homeData.devices?.length || 0}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10 }}>Total Devices: {homeData.summary?.total_devices || 0} | Active: {homeData.summary?.active_devices || 0}</Text>
 
             {(homeData.devices || []).map((device, index) => {
-              const sensors = device.latest_data ? Object.entries(device.latest_data).map(([k, v]) => ({ key: k, value: String(v) })) : [];
+              const basicFields = ['nitrogen', 'phosphorus', 'potassium', 'temperature', 'humidity'];
+              const advancedFields = ['nitrogen', 'phosphorus', 'potassium', 'ec', 'ph', 'soil_moisture', 'temperature', 'humidity'];
+
+              const allowedFields = device.device_type === 'advanced' ? advancedFields : basicFields;
+
+              const sensors = device.latest_data ? allowedFields
+                .filter(k => device.latest_data[k] !== undefined)
+                .map(k => ({ key: k, value: String(device.latest_data[k]) })) : [];
+
               return (
-                <View key={device.id || index} style={{ marginBottom: theme.spacing.xl }}>
+                <View key={device.device_id || index} style={{ marginBottom: theme.spacing.xl }}>
                   <View style={styles.cardRow}>
                     <Card style={styles.halfCard}>
                       <Text style={styles.cardTitle}>Device Details</Text>
@@ -82,7 +90,7 @@ export default function HomeScreen({ navigation }) {
 
                     <Card style={styles.halfCard}>
                       <Text style={styles.cardTitle}>Soil Health</Text>
-                      <Text style={styles.scoreNumber}>{device.health_score || '-'}</Text>
+                      <Text style={styles.scoreNumber}>{device.health_score ?? '-'}</Text>
                       <Text style={styles.poorLabel}>{device.health_label || '-'}</Text>
                       <Button title="Start Soil Test" onPress={() => navigation.navigate('TestingTab')} />
                     </Card>
@@ -92,8 +100,12 @@ export default function HomeScreen({ navigation }) {
                     <View style={styles.summaryRow}>
                       {sensors.length > 0 ? sensors.map(sensor => (
                         <View key={sensor.key} style={styles.sensorCol}>
-                          <Text style={styles.sensorName}>{sensor.key}</Text>
-                          <Text style={styles.sensorValue}>{sensor.value}</Text>
+                          <Card style={{ padding: 10, alignItems: 'center' }}>
+                            <Text style={styles.sensorName}>
+                              {sensor.key.replace('_', ' ').toUpperCase()}
+                            </Text>
+                            <Text style={styles.sensorValue}>{sensor.value}</Text>
+                          </Card>
                         </View>
                       )) : (
                         <Text style={styles.deviceMeta}>No sensor data available.</Text>
@@ -107,7 +119,7 @@ export default function HomeScreen({ navigation }) {
             {(!homeData.devices || homeData.devices.length === 0) && (
               <Card>
                 <Text style={{ textAlign: 'center', marginBottom: theme.spacing.m }}>No devices found.</Text>
-                <Button title="+ Add New Device" onPress={() => navigation.navigate('Step1')} />
+                <Button title="+ Add New Device" onPress={() => navigation.navigate('TestingTab')} />
               </Card>
             )}
           </>
@@ -247,13 +259,13 @@ const styles = StyleSheet.create({
   },
   summaryRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'flex-start',
   },
+
   sensorCol: {
-    minWidth: '18%',
-    flexGrow: 1,
+    width: '25%',
+    marginBottom: 12,
   },
   sensorName: {
     fontSize: 12,
