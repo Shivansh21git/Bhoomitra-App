@@ -153,7 +153,7 @@ export default function HomeScreen({ navigation }) {
                     <View style={styles.summaryRow}>
                       {sensors.length > 0 ? sensors.map(sensor => (
                         <View key={sensor.key} style={styles.sensorCol}>
-                          <Card style={{ padding: 10, alignItems: 'center' }}>
+                          <Card style={styles.sensorCard}>
                             <Text style={styles.sensorName}>
                               {sensor.key.replace('_', ' ').toUpperCase()}
                             </Text>
@@ -325,21 +325,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
+    marginHorizontal: -4,
   },
 
   sensorCol: {
     width: '25%',
-    marginBottom: 12,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  sensorCard: {
+    height: 88,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
   },
   sensorName: {
     fontSize: 12,
     color: theme.colors.textLight,
+    textAlign: 'center',
     fontFamily: theme.typography.fontFamily,
   },
   sensorValue: {
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.text,
+    marginTop: 4,
+    textAlign: 'center',
     fontFamily: theme.typography.fontFamily,
   },
   sensorState: {
