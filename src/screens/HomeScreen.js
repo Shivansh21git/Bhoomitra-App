@@ -145,7 +145,7 @@ export default function HomeScreen({ navigation }) {
                       <Text style={styles.cardTitle}>Soil Health</Text>
                       <Text style={styles.scoreNumber}>{selectedDevice.health_score ?? '-'}</Text>
                       <Text style={styles.poorLabel}>{selectedDevice.health_label || '-'}</Text>
-                      <Button title="Start Soil Test" onPress={() => navigation.navigate('TestingTab')} />
+                      <Button title="View Analytics" onPress={() => navigation.navigate('Analytics')} />
                     </Card>
                   </View>
 
@@ -171,7 +171,7 @@ export default function HomeScreen({ navigation }) {
             {(!homeData.devices || homeData.devices.length === 0) && (
               <Card>
                 <Text style={{ textAlign: 'center', marginBottom: theme.spacing.m }}>No devices found.</Text>
-                <Button title="+ Add New Device" onPress={() => navigation.navigate('TestingTab')} />
+                <Button title="+ View Analytics" onPress={() => navigation.navigate('Analytics')} />
               </Card>
             )}
           </>

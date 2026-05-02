@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 
 import HomeScreen from '../screens/HomeScreen';
-import TestingNavigator from './TestingNavigator';
+import AnalyticsScreen from '../screens/AnalyticsScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -13,14 +13,15 @@ const Tab = createBottomTabNavigator();
 export default function TabNavigator() {
   return (
     <Tab.Navigator
+      initialRouteName="Analytics"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'TestingTab') {
-            iconName = focused ? 'flask' : 'flask-outline';
+          } else if (route.name === 'Analytics') {
+            iconName = focused ? 'analytics' : 'analytics-outline';
           } else if (route.name === 'Reports') {
             iconName = focused ? 'document-text' : 'document-text-outline';
           } else if (route.name === 'Profile') {
@@ -49,9 +50,9 @@ export default function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen 
-        name="TestingTab" 
-        component={TestingNavigator} 
-        options={{ headerShown: false, title: 'Testing' }} 
+        name="Analytics"
+        component={AnalyticsScreen}
+        options={{ title: 'Analytics' }}
       />
       <Tab.Screen name="Reports" component={ReportsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />

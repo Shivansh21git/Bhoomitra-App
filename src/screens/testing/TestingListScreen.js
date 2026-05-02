@@ -15,7 +15,7 @@ export default function TestingListScreen({ navigation }) {
 
   const startNewTest = () => {
     resetTestSession();
-    navigation.navigate('TestingTab');
+    navigation.navigate('Analytics');
   };
 
   const getScoreColor = (score) => {
