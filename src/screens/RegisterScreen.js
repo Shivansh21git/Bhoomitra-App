@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, Image, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import Button from '../components/Button';
@@ -10,11 +10,15 @@ export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [mobileNo, setMobileNo] = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [location, setLocation] = useState('');
+  const [farmSize, setFarmSize] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!username || !email || !password || !confirmPassword) {
-      Alert.alert('Validation', 'Please fill all fields.');
+    if (!username || !email || !password || !confirmPassword || !mobileNo) {
+      Alert.alert('Validation', 'Please fill all required fields.');
       return;
     }
 
@@ -23,9 +27,28 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
+    const payload = {
+      username: username.trim(),
+      email: email.trim(),
+      password,
+      confirm_password: confirmPassword,
+      mobile_no: mobileNo.trim(),
+    };
+
+    if (occupation.trim()) payload.occupation = occupation.trim();
+    if (location.trim()) payload.location = location.trim();
+    if (farmSize.trim()) {
+      const parsedFarmSize = Number(farmSize);
+      if (Number.isNaN(parsedFarmSize)) {
+        Alert.alert('Validation', 'Farm size must be a valid number.');
+        return;
+      }
+      payload.farm_size = parsedFarmSize;
+    }
+
     setIsLoading(true);
     try {
-      await apiService.register(username, email, password, confirmPassword);
+      await apiService.register(payload);
       Alert.alert('Success', 'Registration successful!', [
         { text: 'OK', onPress: () => navigation.navigate('Login') }
       ]);
@@ -58,7 +81,7 @@ export default function RegisterScreen({ navigation }) {
         <Text style={styles.welcomeSubtitle}>Register to get started</Text>
       </View>
 
-      <View style={styles.formContainer}>
+      <ScrollView style={styles.formContainer} contentContainerStyle={styles.formContent} showsVerticalScrollIndicator={false}>
         <View style={styles.inputWrapper}>
           <Ionicons name="person-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
@@ -80,6 +103,52 @@ export default function RegisterScreen({ navigation }) {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <Ionicons name="call-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Mobile Number *"
+            placeholderTextColor={theme.colors.textLight}
+            value={mobileNo}
+            onChangeText={setMobileNo}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <Ionicons name="briefcase-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Occupation (Optional)"
+            placeholderTextColor={theme.colors.textLight}
+            value={occupation}
+            onChangeText={setOccupation}
+          />
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <Ionicons name="location-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Location (Optional)"
+            placeholderTextColor={theme.colors.textLight}
+            value={location}
+            onChangeText={setLocation}
+          />
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <Ionicons name="leaf-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Farm Size (Optional)"
+            placeholderTextColor={theme.colors.textLight}
+            value={farmSize}
+            onChangeText={setFarmSize}
+            keyboardType="numeric"
           />
         </View>
 
@@ -123,7 +192,7 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.registerLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -182,6 +251,9 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
+  },
+  formContent: {
+    paddingBottom: theme.spacing.m,
   },
   inputWrapper: {
     flexDirection: 'row',

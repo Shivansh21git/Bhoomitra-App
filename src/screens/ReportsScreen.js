@@ -1,18 +1,48 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { theme } from '../theme/theme';
 import Card from '../components/Card';
 import { Ionicons } from '@expo/vector-icons';
-
-const RECENT_REPORTS = [
-  { id: '1', date: '21 Mar 2026', farm: 'Ramesh Singh', score: 'Excellent', n: '45', p: '20', k: '150' },
-  { id: '2', date: '19 Mar 2026', farm: 'Sunita Devi', score: 'Moderate', n: '38', p: '15', k: '120' },
-  { id: '3', date: '15 Mar 2026', farm: 'Ali Khan', score: 'Poor', n: '20', p: '10', k: '90' },
-  { id: '4', date: '12 Mar 2026', farm: 'Priya Sharma', score: 'Excellent', n: '48', p: '22', k: '160' },
-  { id: '5', date: '10 Mar 2026', farm: 'Ravi Kumar', score: 'Moderate', n: '35', p: '14', k: '110' },
-];
+import { useFocusEffect } from '@react-navigation/native';
+import { apiService } from '../api/apiService';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function ReportsScreen() {
+  const userToken = useAuthStore(state => state.userToken);
+  const [reports, setReports] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchReports = useCallback(async () => {
+    if (!userToken) {
+      setReports([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiService.getReports(userToken);
+      setReports(Array.isArray(data?.reports) ? data.reports : []);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch reports');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userToken]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchReports();
+    }, [fetchReports])
+  );
+
   const getScoreColor = (score) => {
     if (score === 'Excellent') return theme.colors.success;
     if (score === 'Moderate') return theme.colors.warning;
@@ -22,26 +52,26 @@ export default function ReportsScreen() {
   const renderItem = ({ item }) => (
     <Card style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.title}>{item.farm}</Text>
+        <Text style={styles.title}>{item.device_name || '-'}</Text>
         <Text style={styles.date}>{item.date}</Text>
       </View>
       
       <View style={styles.metrics}>
         <View style={styles.metricItem}>
           <Text style={styles.metricLabel}>N</Text>
-          <Text style={styles.metricValue}>{item.n}</Text>
+          <Text style={styles.metricValue}>{item?.npk?.nitrogen ?? '-'}</Text>
         </View>
         <View style={styles.metricItem}>
           <Text style={styles.metricLabel}>P</Text>
-          <Text style={styles.metricValue}>{item.p}</Text>
+          <Text style={styles.metricValue}>{item?.npk?.phosphorus ?? '-'}</Text>
         </View>
         <View style={styles.metricItem}>
           <Text style={styles.metricLabel}>K</Text>
-          <Text style={styles.metricValue}>{item.k}</Text>
+          <Text style={styles.metricValue}>{item?.npk?.potassium ?? '-'}</Text>
         </View>
         
-        <View style={[styles.badge, { backgroundColor: getScoreColor(item.score) }]}>
-          <Text style={styles.badgeText}>{item.score}</Text>
+        <View style={[styles.badge, { backgroundColor: getScoreColor(item?.health?.label) }]}>
+          <Text style={styles.badgeText}>{item?.health?.label || '-'}</Text>
         </View>
       </View>
       
@@ -60,10 +90,20 @@ export default function ReportsScreen() {
       </View>
       
       <FlatList
-        data={RECENT_REPORTS}
-        keyExtractor={(item) => item.id}
+        data={reports}
+        keyExtractor={(item, index) => String(item?.id ?? index)}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
+        refreshing={isLoading}
+        onRefresh={fetchReports}
+        ListHeaderComponent={isLoading ? <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} /> : null}
+        ListEmptyComponent={
+          !isLoading ? (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>{error || 'No reports found.'}</Text>
+            </Card>
+          ) : null
+        }
       />
     </View>
   );
@@ -86,5 +126,8 @@ const styles = StyleSheet.create({
   badge: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   footer: { flexDirection: 'row', alignItems: 'center', marginTop: theme.spacing.m, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: theme.spacing.sm },
-  downloadText: { marginLeft: 4, color: theme.colors.primary, fontSize: 14, fontWeight: '600', marginTop: 8 }
+  downloadText: { marginLeft: 4, color: theme.colors.primary, fontSize: 14, fontWeight: '600', marginTop: 8 },
+  loader: { marginBottom: theme.spacing.m },
+  emptyCard: { marginTop: theme.spacing.s },
+  emptyText: { textAlign: 'center', color: theme.colors.textLight }
 });

@@ -1,5 +1,28 @@
 const BASE_URL = 'https://ar.bhoomitra.space/api';
 
+const parseJsonResponse = async (response, fallbackError) => {
+  const text = await response.text();
+  let data = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error('Invalid response from server');
+  }
+
+  if (!response.ok) {
+    const error = new Error(
+      data.message ||
+      data.detail ||
+      fallbackError
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+};
+
 export const apiService = {
   async login(username, password) {
     try {
@@ -11,63 +34,28 @@ export const apiService = {
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('Login Status:', response.status);
-
-      const text = await response.text();
-      console.log('Login Raw Response:', text);
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error('Backend returned HTML instead of JSON');
+      const data = await parseJsonResponse(response, 'Invalid username or password');
+      if (data.status && data.status !== 'success') {
+        throw new Error(data.message || 'Invalid username or password');
       }
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
-
       return data;
     } catch (error) {
-      console.log('Login Error:', error);
       throw error;
     }
   },
 
-  async register(username, email, password, confirm_password) {
+  async register(payload) {
     try {
       const response = await fetch(`${BASE_URL}/register/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          username,
-          email,
-          password,
-          confirm_password,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      console.log('Status Code:', response.status);
-
-      const text = await response.text();
-      console.log('Raw Response:', text);
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error('Invalid JSON response from backend');
-      }
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
-
-      return data;
+      return await parseJsonResponse(response, 'Registration failed');
     } catch (error) {
-      console.log('Register Error:', error);
       throw error;
     }
   },
@@ -82,13 +70,7 @@ export const apiService = {
         },
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch home data');
-      }
-
-      return data;
+      return await parseJsonResponse(response, 'Failed to fetch home data');
     } catch (error) {
       throw error;
     }
@@ -110,20 +92,72 @@ export const apiService = {
         }),
       });
 
-      const text = await response.text();
-      let data;
+      return await parseJsonResponse(response, 'Failed to add device');
+    } catch (error) {
+      throw error;
+    }
+  },
 
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        throw new Error('Invalid JSON response from add device API');
-      }
+  async getDeviceAnalytics(token, deviceId) {
+    try {
+      const response = await fetch(`${BASE_URL}/device/${encodeURIComponent(deviceId)}/analytics/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (!response.ok) {
-        throw new Error(data.message || data.detail || 'Failed to add device');
-      }
+      return await parseJsonResponse(response, 'Failed to fetch device analytics');
+    } catch (error) {
+      throw error;
+    }
+  },
 
-      return data;
+  async getReports(token) {
+    try {
+      const response = await fetch(`${BASE_URL}/reports/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      return await parseJsonResponse(response, 'Failed to fetch reports');
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getProfile(token) {
+    try {
+      const response = await fetch(`${BASE_URL}/profile/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      return await parseJsonResponse(response, 'Failed to fetch profile');
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async updateProfile(token, payload) {
+    try {
+      const response = await fetch(`${BASE_URL}/profile/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      return await parseJsonResponse(response, 'Failed to update profile');
     } catch (error) {
       throw error;
     }

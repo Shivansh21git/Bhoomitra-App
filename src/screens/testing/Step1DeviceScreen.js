@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { theme } from '../../theme/theme';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import { useAuthStore } from '../../store/useAuthStore';
+import { apiService } from '../../api/apiService';
 
 const MOCK_DEVICES = [
   { id: 'BLE-Bhoomitra-001', name: 'Bhoomitra Sensor 001', location: 'Pune Field 2', status: 'online' },
@@ -13,36 +15,55 @@ const MOCK_DEVICES = [
 export default function Step1DeviceScreen({ navigation }) {
   const [devices, setDevices] = useState(MOCK_DEVICES);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', id: '', location: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState({ name: '', device_id: '', location: '', device_type: 'basic' });
   const logout = useAuthStore(state => state.logout);
+  const userToken = useAuthStore(state => state.userToken);
   const userName = 'Nitika';
 
   const refreshDeviceList = () => setDevices(prev => [...prev]);
 
   const handleSubmitDevice = async () => {
-    if (!form.name.trim() || !form.id.trim()) {
-      Alert.alert('Validation', 'Device Name and Device ID are required.');
+    if (!form.name.trim() || !form.device_id.trim() || !form.location.trim() || !form.device_type.trim()) {
+      Alert.alert('Validation', 'Device ID, Name, Location and Device Type are required.');
       return;
     }
+
     const payload = {
+      device_id: form.device_id.trim(),
       name: form.name.trim(),
-      id: form.id.trim(),
       location: form.location.trim(),
-      status: 'online',
+      device_type: form.device_type.trim(),
     };
-    try {
-      await fetch('https://example.com/api/devices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-    } catch (_error) {
-      // Keep optimistic local update if API is unavailable.
+
+    if (!userToken) {
+      Alert.alert('Session Expired', 'Please login again.');
+      logout();
+      return;
     }
-    setDevices(prev => [payload, ...prev]);
-    refreshDeviceList();
-    setForm({ name: '', id: '', location: '' });
-    setShowForm(false);
+
+    setIsSubmitting(true);
+    try {
+      await apiService.addDevice(userToken, payload);
+      setDevices(prev => [
+        { id: payload.device_id, name: payload.name, location: payload.location, status: 'online' },
+        ...prev
+      ]);
+      refreshDeviceList();
+      setForm({ name: '', device_id: '', location: '', device_type: 'basic' });
+      setShowForm(false);
+      Alert.alert('Success', 'Device added successfully.');
+    } catch (error) {
+      if (error?.status === 401) {
+        Alert.alert('Unauthorized', 'Token missing or expired. Please login again.', [
+          { text: 'OK', onPress: () => logout() }
+        ]);
+        return;
+      }
+      Alert.alert('Add Device Failed', error.message || 'Unable to add device.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderItem = ({ item }) => (
@@ -84,8 +105,8 @@ export default function Step1DeviceScreen({ navigation }) {
           <TextInput
             placeholder="Device ID"
             placeholderTextColor={theme.colors.textLight}
-            value={form.id}
-            onChangeText={(value) => setForm(prev => ({ ...prev, id: value }))}
+            value={form.device_id}
+            onChangeText={(value) => setForm(prev => ({ ...prev, device_id: value }))}
             style={styles.input}
           />
           <TextInput
@@ -95,7 +116,18 @@ export default function Step1DeviceScreen({ navigation }) {
             onChangeText={(value) => setForm(prev => ({ ...prev, location: value }))}
             style={styles.input}
           />
-          <Button title="Submit Device" onPress={handleSubmitDevice} />
+          <View style={styles.pickerWrap}>
+            <Picker
+              selectedValue={form.device_type}
+              onValueChange={(value) => setForm(prev => ({ ...prev, device_type: value }))}
+              style={styles.picker}
+              dropdownIconColor={theme.colors.text}
+            >
+              <Picker.Item label="Basic" value="basic" />
+              <Picker.Item label="Advanced" value="advanced" />
+            </Picker>
+          </View>
+          <Button title={isSubmitting ? 'Submitting...' : 'Submit Device'} onPress={handleSubmitDevice} disabled={isSubmitting} />
         </Card>
       ) : null}
 
@@ -162,6 +194,16 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontFamily: theme.typography.fontFamily,
     backgroundColor: '#fff',
+  },
+  pickerWrap: {
+    borderWidth: 1,
+    borderColor: theme.colors.inputBorder,
+    borderRadius: 6,
+    marginBottom: theme.spacing.s,
+    backgroundColor: '#fff',
+  },
+  picker: {
+    color: theme.colors.text,
   },
   listWrap: { flex: 1 },
   list: {

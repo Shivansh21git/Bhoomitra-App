@@ -8,6 +8,17 @@ import Card from '../components/Card';
 import { useAuthStore } from '../store/useAuthStore';
 import { theme } from '../theme/theme';
 
+const SENSOR_LABELS = {
+  nitrogen: 'N',
+  phosphorus: 'P',
+  potassium: 'K',
+  temperature: 'Temp',
+  humidity: 'Humidity',
+  ec: 'EC',
+  ph: 'pH',
+  soil_moisture: 'Soil Moisture',
+};
+
 export default function HomeScreen({ navigation }) {
   const logout = useAuthStore(state => state.logout);
   const userToken = useAuthStore(state => state.userToken);
@@ -75,7 +86,7 @@ export default function HomeScreen({ navigation }) {
   const sensors = selectedDevice?.latest_data
     ? allowedFields
       .filter(k => selectedDevice.latest_data[k] !== undefined)
-      .map(k => ({ key: k, value: String(selectedDevice.latest_data[k]) }))
+      .map(k => ({ key: k, label: SENSOR_LABELS[k] || k, value: String(selectedDevice.latest_data[k]) }))
     : [];
 
   return (
@@ -145,7 +156,10 @@ export default function HomeScreen({ navigation }) {
                       <Text style={styles.cardTitle}>Soil Health</Text>
                       <Text style={styles.scoreNumber}>{selectedDevice.health_score ?? '-'}</Text>
                       <Text style={styles.poorLabel}>{selectedDevice.health_label || '-'}</Text>
-                      <Button title="View Analytics" onPress={() => navigation.navigate('Analytics')} />
+                      <Button
+                        title="View Analytics"
+                        onPress={() => navigation.navigate('Analytics', { deviceId: selectedDevice.device_id })}
+                      />
                     </Card>
                   </View>
 
@@ -155,7 +169,7 @@ export default function HomeScreen({ navigation }) {
                         <View key={sensor.key} style={styles.sensorCol}>
                           <Card style={styles.sensorCard}>
                             <Text style={styles.sensorName}>
-                              {sensor.key.replace('_', ' ').toUpperCase()}
+                              {sensor.label}
                             </Text>
                             <Text style={styles.sensorValue}>{sensor.value}</Text>
                           </Card>
