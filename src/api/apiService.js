@@ -148,7 +148,7 @@ export const apiService = {
 
   async updateProfile(token, payload) {
     try {
-      const response = await fetch(`${BASE_URL}/profile/`, {
+      const response = await fetch(`${BASE_URL}/profile/update/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

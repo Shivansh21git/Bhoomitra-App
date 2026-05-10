@@ -104,9 +104,8 @@ export default function ProfileScreen() {
 
     setIsSaving(true);
     try {
-      const updated = await apiService.updateProfile(userToken, changedFields);
-      setProfileData(updated);
-      hydrateForm(updated);
+      await apiService.updateProfile(userToken, changedFields);
+      await fetchProfile();
       Alert.alert('Success', 'Profile updated successfully.');
     } catch (err) {
       Alert.alert('Update Failed', err.message || 'Failed to update profile');
