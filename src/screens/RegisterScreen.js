@@ -86,7 +86,7 @@ export default function RegisterScreen({ navigation }) {
           <Ionicons name="person-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Username"
+            placeholder="Username *"
             placeholderTextColor={theme.colors.textLight}
             value={username}
             onChangeText={setUsername}
@@ -97,7 +97,7 @@ export default function RegisterScreen({ navigation }) {
           <Ionicons name="mail-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder="Email *"
             placeholderTextColor={theme.colors.textLight}
             value={email}
             onChangeText={setEmail}
@@ -110,7 +110,7 @@ export default function RegisterScreen({ navigation }) {
           <Ionicons name="call-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Mobile Number *"
+            placeholder="Mobile No *"
             placeholderTextColor={theme.colors.textLight}
             value={mobileNo}
             onChangeText={setMobileNo}
@@ -122,7 +122,7 @@ export default function RegisterScreen({ navigation }) {
           <Ionicons name="briefcase-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Occupation (Optional)"
+            placeholder="Occupation"
             placeholderTextColor={theme.colors.textLight}
             value={occupation}
             onChangeText={setOccupation}
@@ -133,7 +133,7 @@ export default function RegisterScreen({ navigation }) {
           <Ionicons name="location-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Location (Optional)"
+            placeholder="Location"
             placeholderTextColor={theme.colors.textLight}
             value={location}
             onChangeText={setLocation}
@@ -144,7 +144,7 @@ export default function RegisterScreen({ navigation }) {
           <Ionicons name="leaf-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Farm Size (Optional)"
+            placeholder="Farm Size"
             placeholderTextColor={theme.colors.textLight}
             value={farmSize}
             onChangeText={setFarmSize}
@@ -156,7 +156,7 @@ export default function RegisterScreen({ navigation }) {
           <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder="Password *"
             placeholderTextColor={theme.colors.textLight}
             secureTextEntry
             value={password}
@@ -168,7 +168,7 @@ export default function RegisterScreen({ navigation }) {
           <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textLight} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Confirm Password"
+            placeholder="Confirm Password *"
             placeholderTextColor={theme.colors.textLight}
             secureTextEntry
             value={confirmPassword}
