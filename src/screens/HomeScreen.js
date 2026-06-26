@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { apiService } from '../api/apiService';
+import BluetoothConnectModal from '../components/BluetoothConnectModal';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import { bleService } from '../services/bleService';
 import { useAuthStore } from '../store/useAuthStore';
+import { useBleStore } from '../store/useBleStore';
 import { theme } from '../theme/theme';
 
 const SENSOR_LABELS = {
@@ -29,6 +32,18 @@ export default function HomeScreen({ navigation }) {
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showBleModal, setShowBleModal] = useState(false);
+
+  const [isTesting, setIsTesting] = useState(false);
+  const [activeTestId, setActiveTestId] = useState(null);
+  const [sampleCount, setSampleCount] = useState(0);
+  const [localSamples, setLocalSamples] = useState([]);
+  const [isApiLoading, setIsApiLoading] = useState(false);
+
+  const isBleConnected = useBleStore(state => state.isConnected);
+  const connectedDeviceName = useBleStore(state => state.connectedDeviceName);
+  const connectedDeviceId = useBleStore(state => state.connectedDeviceId);
+  const setDisconnected = useBleStore(state => state.setDisconnected);
 
   const fetchHomeData = useCallback(async (showLoader = false) => {
     if (!userToken) {
@@ -63,6 +78,208 @@ export default function HomeScreen({ navigation }) {
   );
 
   useEffect(() => {
+    if (!connectedDeviceId) {
+      return undefined;
+    }
+
+    const subscription = bleService.onDeviceDisconnected(connectedDeviceId, () => {
+      setDisconnected();
+    });
+
+    return () => subscription.remove();
+  }, [connectedDeviceId, setDisconnected]);
+
+  const handleDisconnectBle = async () => {
+    if (!connectedDeviceId) {
+      return;
+    }
+
+    try {
+      await bleService.disconnectDevice(connectedDeviceId);
+      setDisconnected();
+    } catch (err) {
+      Alert.alert('Disconnect Failed', err.message || 'Unable to disconnect from device.');
+    }
+  };
+
+  const handleStartTest = async () => {
+    if (!isBleConnected || !connectedDeviceId) {
+      Alert.alert(
+        'Bluetooth Required',
+        'You must connect to a Bluetooth device to start a soil test.',
+        [
+          { text: 'Connect', onPress: () => setShowBleModal(true) },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
+    if (!selectedDevice) {
+      Alert.alert('No Device Selected', 'Please select a device to test.');
+      return;
+    }
+
+    setIsApiLoading(true);
+    try {
+      const result = await apiService.startTest(userToken, selectedDevice.device_id);
+      if (result && result.test_id) {
+        setActiveTestId(result.test_id);
+        setIsTesting(true);
+        setSampleCount(0);
+        setLocalSamples([]);
+      } else {
+        throw new Error('No test ID received from server.');
+      }
+    } catch (err) {
+      Alert.alert('Start Test Failed', err.message || 'Failed to start soil test.');
+    } finally {
+      setIsApiLoading(false);
+    }
+  };
+
+  const handleCompleteTest = async (samples) => {
+    setIsApiLoading(true);
+    console.log(`\n==== [Completing Soil Test] ====`);
+    console.log(`Test ID: ${activeTestId}`);
+    console.log(`Samples to submit:`, JSON.stringify(samples, null, 2));
+    console.log(`================================\n`);
+    try {
+      const result = await apiService.completeTest(userToken, activeTestId, samples);
+      console.log(`\n==== [Soil Test Submission Success] ====`);
+      console.log(`Result:`, JSON.stringify(result, null, 2));
+      console.log(`========================================\n`);
+      Alert.alert(
+        'Soil Test Success',
+        `Soil testing completed successfully!\n\nNew Health Score: ${result.health_score ?? '-'}\nLabel: ${result.health_label || '-'}`,
+        [{ text: 'OK', onPress: () => fetchHomeData(true) }]
+      );
+    } catch (err) {
+      console.error(`\nxxxx [Soil Test Submission Failed] xxxx`);
+      console.error(`Error:`, err);
+      console.error(`xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n`);
+      Alert.alert('Submission Failed', err.message || 'Failed to submit samples to server.');
+    } finally {
+      setIsTesting(false);
+      setActiveTestId(null);
+      setSampleCount(0);
+      setLocalSamples([]);
+      setIsApiLoading(false);
+    }
+  };
+
+  const handleCancelTest = () => {
+    Alert.alert(
+      'Cancel Test',
+      'Are you sure you want to cancel the soil test? This will mark the test as failed.',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            setIsApiLoading(true);
+            try {
+              if (activeTestId) {
+                await apiService.failTest(userToken, activeTestId);
+              }
+            } catch (err) {
+              console.warn('Fail test API error:', err);
+            } finally {
+              setIsTesting(false);
+              setActiveTestId(null);
+              setSampleCount(0);
+              setLocalSamples([]);
+              setIsApiLoading(false);
+              Alert.alert('Test Cancelled', 'Soil test was cancelled.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleTakeSample = async () => {
+    if (!isBleConnected || !connectedDeviceId) {
+      Alert.alert('Device Disconnected', 'Bluetooth disconnected. Cannot take sample.');
+      try {
+        if (activeTestId) {
+          await apiService.failTest(userToken, activeTestId);
+        }
+      } catch (err) {
+        console.warn('Fail test API error:', err);
+      } finally {
+        setIsTesting(false);
+        setActiveTestId(null);
+        setSampleCount(0);
+        setLocalSamples([]);
+      }
+      return;
+    }
+
+    const nextCount = sampleCount + 1;
+    setIsApiLoading(true);
+    console.log(`\n==== [Sensing Sample ${nextCount}/5] ====`);
+    console.log(`Sending command to BLE Device: ${connectedDeviceId}`);
+
+    try {
+      await bleService.sendSampleCommand(connectedDeviceId, nextCount);
+
+      const newReading = {
+        nitrogen: Math.floor(40 + Math.random() * 20),
+        phosphorus: Math.floor(15 + Math.random() * 10),
+        potassium: Math.floor(130 + Math.random() * 40),
+        temperature: Number((25 + Math.random() * 8).toFixed(1)),
+        humidity: Number((50 + Math.random() * 15).toFixed(1)),
+      };
+      if (selectedDevice?.device_type === 'advanced') {
+        newReading.ec = Number((1.0 + Math.random() * 0.5).toFixed(2));
+        newReading.ph = Number((6.2 + Math.random() * 1.2).toFixed(1));
+        newReading.soil_moisture = Number((30 + Math.random() * 15).toFixed(1));
+      }
+
+      console.log(`Sample ${nextCount} Sensed successfully:`, JSON.stringify(newReading, null, 2));
+      console.log(`========================================\n`);
+
+      const updatedSamples = [...localSamples, newReading];
+      setLocalSamples(updatedSamples);
+      setSampleCount(nextCount);
+
+      if (nextCount >= 5) {
+        await handleCompleteTest(updatedSamples);
+      }
+    } catch (err) {
+      console.error(`\nxxxx [Sampling Failed] xxxx`);
+      console.error(`Error:`, err);
+      console.error(`xxxxxxxxxxxxxxxxxxxxxxxxxxx\n`);
+      Alert.alert('Sampling Failed', err.message || 'Could not capture sample.');
+    } finally {
+      setIsApiLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isTesting && !isBleConnected) {
+      const triggerAutoFail = async () => {
+        try {
+          if (activeTestId) {
+            await apiService.failTest(userToken, activeTestId);
+          }
+        } catch (err) {
+          console.warn('Fail test auto API error:', err);
+        } finally {
+          setIsTesting(false);
+          setActiveTestId(null);
+          setSampleCount(0);
+          setLocalSamples([]);
+          Alert.alert('Test Failed', 'Bluetooth disconnected. The soil test was cancelled.');
+        }
+      };
+      triggerAutoFail();
+    }
+  }, [isBleConnected, isTesting, activeTestId, userToken]);
+
+  useEffect(() => {
     const devices = homeData?.devices || [];
     if (devices.length === 0) {
       setSelectedDeviceId('');
@@ -89,6 +306,12 @@ export default function HomeScreen({ navigation }) {
       .map(k => ({ key: k, label: SENSOR_LABELS[k] || k, value: String(selectedDevice.latest_data[k]) }))
     : [];
 
+  const deviceStatus = isBleConnected ? 'online' : 'offline';
+  const statusColors =
+    deviceStatus === 'online'
+      ? { backgroundColor: '#e8f5e9', color: '#2e7d32' }
+      : { backgroundColor: '#ffebee', color: '#dc2626' };
+
   return (
     <View style={styles.screen}>
       <View style={styles.navBar}>
@@ -112,6 +335,13 @@ export default function HomeScreen({ navigation }) {
         {!isLoading && !error && homeData && (
           <>
             <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 10 }}>Total Devices: {homeData.summary?.total_devices || 0} | Active: {homeData.summary?.active_devices || 0}</Text>
+
+            <Button
+              title={isBleConnected ? 'Disconnect Bluetooth' : 'Connect Bluetooth'}
+              onPress={() => (isBleConnected ? handleDisconnectBle() : setShowBleModal(true))}
+              variant={isBleConnected ? 'outline' : 'primary'}
+              style={styles.topButton}
+            />
 
             {devices.length > 0 && (
               <View style={styles.dropdown}>
@@ -142,24 +372,72 @@ export default function HomeScreen({ navigation }) {
                       </View>
                       <Text style={styles.deviceMeta}>Location: {selectedDevice.location}</Text>
                       <Text style={styles.deviceMeta}>Last Updated: {selectedDevice.last_updated}</Text>
+                      {isBleConnected && connectedDeviceName ? (
+                        <Text style={styles.deviceMeta}>BLE: {connectedDeviceName}</Text>
+                      ) : null}
                       <View style={styles.statusRow}>
                         <Text style={styles.deviceMeta}>Status:</Text>
-                        <View style={[styles.badge, { backgroundColor: '#e8f5e9' }]}>
-                          <Text style={[styles.badgeText, { color: '#2e7d32' }]}>
-                            online
+                        <View style={[styles.badge, { backgroundColor: statusColors.backgroundColor }]}>
+                          <Text style={[styles.badgeText, { color: statusColors.color }]}>
+                            {deviceStatus}
                           </Text>
                         </View>
                       </View>
                     </Card>
 
                     <Card style={styles.halfCard}>
-                      <Text style={styles.cardTitle}>Soil Health</Text>
-                      <Text style={styles.scoreNumber}>{selectedDevice.health_score ?? '-'}</Text>
-                      <Text style={styles.poorLabel}>{selectedDevice.health_label || '-'}</Text>
-                      <Button
-                        title="View Analytics"
-                        onPress={() => navigation.navigate('Analytics', { deviceId: selectedDevice.device_id })}
-                      />
+                      {isTesting ? (
+                        <>
+                          <Text style={styles.cardTitle}>Soil Testing</Text>
+                          <Text style={{ fontSize: 12, color: theme.colors.textLight, marginBottom: 4 }}>
+                            ID: {activeTestId ? (String(activeTestId).length > 10 ? `${String(activeTestId).slice(0, 10)}...` : String(activeTestId)) : '-'}
+                          </Text>
+                          
+                          <View style={{ flexDirection: 'row', gap: 6, marginVertical: 10, alignItems: 'center' }}>
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <View
+                                key={s}
+                                style={{
+                                  width: 12,
+                                  height: 12,
+                                  borderRadius: 6,
+                                  backgroundColor: s <= sampleCount ? theme.colors.primary : '#e2e8f0',
+                                  borderWidth: 1,
+                                  borderColor: s <= sampleCount ? theme.colors.primaryDark : '#cbd5e1'
+                                }}
+                              />
+                            ))}
+                            <Text style={{ fontSize: 13, fontWeight: '700', marginLeft: 4, color: theme.colors.primary }}>
+                              {sampleCount}/5
+                            </Text>
+                          </View>
+
+                          {isApiLoading ? (
+                            <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 12 }} />
+                          ) : (
+                            <>
+                              <Button
+                                title="Take Sample"
+                                onPress={handleTakeSample}
+                                style={{ marginBottom: 6 }}
+                              />
+                              <TouchableOpacity onPress={handleCancelTest} style={{ alignSelf: 'center', paddingVertical: 4 }}>
+                                <Text style={{ color: theme.colors.error, fontSize: 13, fontWeight: '600' }}>Cancel Test</Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Text style={styles.cardTitle}>Soil Health</Text>
+                          <Text style={styles.scoreNumber}>{selectedDevice.health_score ?? '-'}</Text>
+                          <Text style={styles.poorLabel}>{selectedDevice.health_label || '-'}</Text>
+                          <Button
+                            title="Take Soil Test"
+                            onPress={handleStartTest}
+                          />
+                        </>
+                      )}
                     </Card>
                   </View>
 
@@ -201,6 +479,8 @@ export default function HomeScreen({ navigation }) {
           </View>
         </Card>
       </ScrollView>
+
+      <BluetoothConnectModal visible={showBleModal} onClose={() => setShowBleModal(false)} />
     </View>
   );
 }

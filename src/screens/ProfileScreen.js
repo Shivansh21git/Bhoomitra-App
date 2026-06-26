@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Alert, TextInput, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Alert, TextInput, ActivityIndicator, ScrollView, Modal, TouchableOpacity } from 'react-native';
 import { theme } from '../theme/theme';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useFocusEffect } from '@react-navigation/native';
 import { apiService } from '../api/apiService';
+import { Picker } from '@react-native-picker/picker';
 
 export default function ProfileScreen() {
   const logout = useAuthStore(state => state.logout);
@@ -22,6 +23,14 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Add Device Modal State
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [newDeviceId, setNewDeviceId] = useState('');
+  const [newDeviceName, setNewDeviceName] = useState('');
+  const [newDeviceLocation, setNewDeviceLocation] = useState('');
+  const [newDeviceType, setNewDeviceType] = useState('basic');
+  const [isAddingDevice, setIsAddingDevice] = useState(false);
 
   const userName = username || 'User';
 
@@ -84,6 +93,47 @@ export default function ProfileScreen() {
       return acc;
     }, {});
   }, [farmSize, location, mobileNo, occupation, profileData]);
+
+  const handleAddDevice = async () => {
+    if (!userToken) {
+      return;
+    }
+
+    if (!newDeviceId.trim()) {
+      Alert.alert('Validation Error', 'Device ID is required.');
+      return;
+    }
+
+    if (!newDeviceName.trim()) {
+      Alert.alert('Validation Error', 'Device Name is required.');
+      return;
+    }
+
+    setIsAddingDevice(true);
+    try {
+      const payload = {
+        device_id: newDeviceId.trim(),
+        name: newDeviceName.trim(),
+        location: newDeviceLocation.trim(),
+        device_type: newDeviceType,
+      };
+
+      await apiService.addDevice(userToken, payload);
+
+      Alert.alert('Success', 'Device added successfully.');
+      setIsAddModalVisible(false);
+      
+      // Reset form fields
+      setNewDeviceId('');
+      setNewDeviceName('');
+      setNewDeviceLocation('');
+      setNewDeviceType('basic');
+    } catch (err) {
+      Alert.alert('Failed to Add Device', err.message || 'Failed to add device.');
+    } finally {
+      setIsAddingDevice(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
@@ -220,6 +270,13 @@ export default function ProfileScreen() {
       />
 
       <Button
+        title="+ Add New Device"
+        onPress={() => setIsAddModalVisible(true)}
+        variant="primary"
+        style={styles.addDeviceBtn}
+      />
+
+      <Button
         title="Logout"
         variant="outline"
         onPress={handleLogout}
@@ -227,6 +284,82 @@ export default function ProfileScreen() {
       />
 
       <Text style={styles.version}>App Version 1.0.0 (Build 42)</Text>
+
+      <Modal
+        visible={isAddModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsAddModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add New Device</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.modalFormGroup}>
+                <Text style={styles.modalFormLabel}>Device ID (Unique)*</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newDeviceId}
+                  onChangeText={setNewDeviceId}
+                  placeholder="e.g. ESP32-SOIL-01"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.modalFormGroup}>
+                <Text style={styles.modalFormLabel}>Device Name*</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newDeviceName}
+                  onChangeText={setNewDeviceName}
+                  placeholder="e.g. Front Garden"
+                />
+              </View>
+
+              <View style={styles.modalFormGroup}>
+                <Text style={styles.modalFormLabel}>Location (Optional)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newDeviceLocation}
+                  onChangeText={setNewDeviceLocation}
+                  placeholder="e.g. Farm A"
+                />
+              </View>
+
+              <View style={styles.modalFormGroup}>
+                <Text style={styles.modalFormLabel}>Device Type</Text>
+                <View style={styles.modalPickerWrapper}>
+                  <Picker
+                    selectedValue={newDeviceType}
+                    onValueChange={(val) => setNewDeviceType(val)}
+                    style={styles.modalPicker}
+                  >
+                    <Picker.Item label="Basic (NPK + Temp + Humid)" value="basic" />
+                    <Picker.Item label="Advanced (NPK + EC + pH + Moist + Temp + Humid)" value="advanced" />
+                  </Picker>
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <Button
+                  title={isAddingDevice ? "Adding..." : "Add Device"}
+                  onPress={handleAddDevice}
+                  disabled={isAddingDevice}
+                  style={styles.modalBtnSubmit}
+                />
+                <TouchableOpacity
+                  onPress={() => setIsAddModalVisible(false)}
+                  style={styles.modalBtnCancel}
+                  disabled={isAddingDevice}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -339,5 +472,89 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xl,
     color: theme.colors.textLight,
     fontSize: 12
-  }
+  },
+
+  addDeviceBtn: {
+    marginBottom: theme.spacing.s,
+    backgroundColor: theme.colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.m,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: theme.colors.card || '#fff',
+    borderRadius: theme.borderRadius.m || 10,
+    padding: theme.spacing.l || 24,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.l,
+    textAlign: 'center',
+    fontFamily: theme.typography.fontFamily,
+  },
+  modalFormGroup: {
+    marginBottom: theme.spacing.m,
+  },
+  modalFormLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 6,
+    fontFamily: theme.typography.fontFamily,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.inputBorder,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: theme.colors.text,
+    backgroundColor: '#fff',
+    fontFamily: theme.typography.fontFamily,
+  },
+  modalPickerWrapper: {
+    borderWidth: 1,
+    borderColor: theme.colors.inputBorder,
+    borderRadius: 6,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  modalPicker: {
+    height: 50,
+    width: '100%',
+    color: theme.colors.text,
+  },
+  modalActions: {
+    marginTop: theme.spacing.l,
+    gap: 8,
+  },
+  modalBtnSubmit: {
+    marginBottom: 0,
+  },
+  modalBtnCancel: {
+    alignSelf: 'center',
+    paddingVertical: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: theme.colors.textLight,
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: theme.typography.fontFamily,
+  },
 });

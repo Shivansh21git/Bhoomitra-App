@@ -69,6 +69,22 @@ export default function ReportsScreen() {
           <Text style={styles.metricLabel}>K</Text>
           <Text style={styles.metricValue}>{item?.npk?.potassium ?? '-'}</Text>
         </View>
+        {item.device_type === 'advanced' && (
+          <>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>pH</Text>
+              <Text style={styles.metricValue}>{item?.npk?.ph ?? '-'}</Text>
+            </View>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>EC</Text>
+              <Text style={styles.metricValue}>{item?.npk?.ec ?? '-'}</Text>
+            </View>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>Moist</Text>
+              <Text style={styles.metricValue}>{item?.npk?.soil_moisture ?? '-'}</Text>
+            </View>
+          </>
+        )}
         
         <View style={[styles.badge, { backgroundColor: getScoreColor(item?.health?.label) }]}>
           <Text style={styles.badgeText}>{item?.health?.label || '-'}</Text>
@@ -119,8 +135,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.m },
   title: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text },
   date: { fontSize: 12, color: theme.colors.textLight },
-  metrics: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', padding: theme.spacing.s, borderRadius: theme.borderRadius.s },
-  metricItem: { alignItems: 'center', marginRight: theme.spacing.l },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#F8F9FA', padding: theme.spacing.s, borderRadius: theme.borderRadius.s, gap: 12 },
+  metricItem: { alignItems: 'center' },
   metricLabel: { fontSize: 10, color: theme.colors.textLight },
   metricValue: { fontSize: 14, fontWeight: 'bold', color: theme.colors.text },
   badge: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
