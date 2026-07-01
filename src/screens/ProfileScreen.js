@@ -9,7 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { apiService } from '../api/apiService';
 import { Picker } from '@react-native-picker/picker';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation, route }) {
   const logout = useAuthStore(state => state.logout);
   const userToken = useAuthStore(state => state.userToken);
 
@@ -72,7 +72,11 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
-    }, [fetchProfile])
+      if (route?.params?.openAddDevice) {
+        setIsAddModalVisible(true);
+        navigation.setParams({ openAddDevice: undefined });
+      }
+    }, [fetchProfile, route, navigation])
   );
 
   const changedFields = useMemo(() => {

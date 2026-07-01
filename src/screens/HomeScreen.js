@@ -463,7 +463,7 @@ export default function HomeScreen({ navigation }) {
             {(!homeData.devices || homeData.devices.length === 0) && (
               <Card>
                 <Text style={{ textAlign: 'center', marginBottom: theme.spacing.m }}>No devices found.</Text>
-                <Button title="+ View Analytics" onPress={() => navigation.navigate('Analytics')} />
+                <Button title="+ Add Device" onPress={() => navigation.navigate('Profile', { openAddDevice: true })} />
               </Card>
             )}
           </>
